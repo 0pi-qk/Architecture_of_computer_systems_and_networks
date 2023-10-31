@@ -1,0 +1,122 @@
+#include <iostream>
+#include <time.h>
+#include <string>
+#include <fstream>
+#include <cmath>
+#include <typeinfo>
+
+using namespace std;
+
+int SIZE = 0;
+
+template <typename Type>
+void initMatrix(Type**& matrix) {
+    matrix = new Type * [SIZE];
+    for (int i = 0; i < SIZE; i++) {
+        matrix[i] = new Type[SIZE];
+        for (int j = 0; j < SIZE; j++)
+        {
+            matrix[i][j] = static_cast<Type>(rand() % 20);
+        }
+    }
+}
+
+template <typename Type>
+void freeMem(Type**& matrix) {
+    for (int i = 0; i < SIZE; i++) {
+        delete[] matrix[i];
+        matrix[i] = nullptr;
+    }
+    delete[] matrix;
+    matrix = nullptr;
+}
+
+template <typename Type>
+void multiply(Type** matrixA, Type** matrixB, Type** result) {
+    for (int i = 0; i < SIZE; i++)
+        for (int j = 0; j < SIZE; j++)
+            for (int k = 0; k < SIZE; k++)
+                result[i][j] += (matrixA[i][k] * matrixB[k][j]);
+}
+
+template <typename Type>
+float testing(Type**& matrixA, Type**& matrixB) {
+    initMatrix(matrixA);    initMatrix(matrixB);
+
+    Type** result;    initMatrix(result);
+
+    clock_t start = clock();
+
+    for (int i = 0; i < SIZE; i++)
+        for (int j = 0; j < SIZE; j++)
+            for (int k = 0; k < SIZE; k++)
+                result[i][j] += (matrixA[i][k] * matrixB[k][j]);
+
+    clock_t end = clock();
+
+    freeMem(matrixA);    freeMem(matrixB);    freeMem(result);
+
+    return (float)(end - start) / CLOCKS_PER_SEC;
+}
+
+template <typename Type>
+void start(Type** matrixA, Type** matrixB, int insCount, int LNum) {
+    double dispersion = 0, average = 0, deviation = 0, taskPerf = 0, absError = 0, relError = 0;
+
+    float* timeArr = new float[LNum];
+    float timeForOneTask;
+
+    timeForOneTask = testing(matrixA, matrixB);
+
+    for (int i = 0; i < LNum; i++){
+        timeArr[i] = testing(matrixA, matrixB);
+        average += timeArr[i];
+        taskPerf += (insCount / timeArr[i]);
+        dispersion += pow(timeArr[i] - average, 2);
+    }
+
+    taskPerf = pow((1 / taskPerf), -1);
+    deviation = sqrt(dispersion / LNum);
+    average /= LNum;
+    absError = abs(average - timeForOneTask);
+    relError = (absError / average) * 100;
+
+    fstream out("result.cvs", std::ios::app);
+    if (out.is_open())
+        out << timeForOneTask << ";"<< LNum << ";" << average << ";" << absError << ";" << relError << "%;" << taskPerf << ";]\n";
+    out.close();
+
+}
+
+int main(int argc, char* argv[]){
+    srand(time(NULL));
+
+    SIZE = atoi(argv[2]);
+
+    string PModel = "Intel(R) Core(TM) i3-8145U", Task = "Multiply matrix", OpType = argv[1], Opt = argv[4], Timer = "clock()", type = argv[1];
+
+    int insCount = SIZE * (SIZE + (SIZE - 1)) + SIZE, LNum = atoi(argv[3]);
+
+    fstream out("result.cvs", std::ios::app);
+    if (out.is_open())
+        out << "[" << PModel << ";" << Task << ";" << OpType << ";" << Opt << ";" << insCount << ";" << Timer << ";";
+    out.close();
+
+    if (type == "int") {
+        int** matrixA;
+        int** matrixB;
+        start(matrixA, matrixB, insCount, LNum);
+    }
+    else if (type == "float") {
+        float** matrixA;
+        float** matrixB;
+        start(matrixA, matrixB, insCount, LNum);
+    }
+    else if (type == "double") {
+        double** matrixA;
+        double** matrixB;
+        start(matrixA, matrixB, insCount, LNum);
+    }
+
+    return 0;
+}
